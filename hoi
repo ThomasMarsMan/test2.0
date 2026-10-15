@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stream Deck Configurator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1115;
+      --card: #171a21;
+      --text: #e7ecf3;
+      --muted: #9fb0c3;
+      --accent: #4ea1ff;
+      --border: #2a3240;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .container {
+      max-width: 900px;
+      margin: 24px auto;
+      padding: 0 16px 32px;
+    }
+    h1 { margin-bottom: 8px; }
+    p { color: var(--muted); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 14px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: var(--muted);
+    }
+    input, select, textarea, button {
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0f141d;
+      color: var(--text);
+      padding: 10px;
+      font-size: 14px;
+    }
+    textarea {
+      width: 100%;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button { cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+    code {
+      background: #0d131d;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 6px;
+    }
+    .small { font-size: 13px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>ESP32-S3 Stream Deck Configurator</h1>
+    <p>
+      Eén file voor GitHub Pages. Stel hier je acties in voor 3 touch-knoppen en 3 potentiometers,
+      en genereer JSON voor je device.
+    </p>
+
+    <section class="card">
+      <h2>Profiel</h2>
+      <label>
+        Profielnaam
+        <input id="profileName" type="text" placeholder="Bijv. OBS Live" maxlength="24" />
+      </label>
+      <p class="small">Tip: maak per use-case een apart profielbestand.</p>
+    </section>
+
+    <section class="card grid">
+      <h2 style="grid-column:1/-1">Touch-knoppen (TTP223)</h2>
+      <label>Touch 1
+        <select id="btn1"></select>
+      </label>
+      <label>Touch 2
+        <select id="btn2"></select>
+      </label>
+      <label>Touch 3
+        <select id="btn3"></select>
+      </label>
+    </section>
+
+    <section class="card grid">
+      <h2 style="grid-column:1/-1">Potentiometers</h2>
+      <label>Pot 1
+        <select id="pot1"></select>
+      </label>
+      <label>Pot 2
+        <select id="pot2"></select>
+      </label>
+      <label>Pot 3
+        <select id="pot3"></select>
+      </label>
+    </section>
+
+    <section class="card actions">
+      <button id="buildJson">Genereer JSON</button>
+      <button id="downloadJson" disabled>Download JSON</button>
+      <button id="copyJson" disabled>Kopieer JSON</button>
+    </section>
+
+    <section class="card">
+      <h2>Configuratie JSON</h2>
+      <textarea id="jsonOut" rows="14" readonly></textarea>
+    </section>
+
+    <section class="card">
+      <h2>Klantflow</h2>
+      <ol>
+        <li>Pair via Bluetooth met de Stream Deck.</li>
+        <li>Open deze webpagina (GitHub Pages).</li>
+        <li>Kies acties en klik <b>Genereer JSON</b>.</li>
+        <li>Kopieer of download het profielbestand.</li>
+        <li>Open je deck setup-portaal (<code>192.168.4.1</code>) en plak/importeer JSON.</li>
+      </ol>
+    </section>
+  </main>
+
+  <script>
+    const buttonActions = [
+      "none",
+      "key:CTRL+SHIFT+1",
+      "key:CTRL+SHIFT+2",
+      "key:CTRL+SHIFT+3",
+      "key:ALT+TAB",
+      "media:play_pause",
+      "media:next",
+      "media:prev",
+      "media:mute"
+    ];
+
+    const potActions = [
+      "none",
+      "media:volume",
+      "media:scroll",
+      "keyStep:CTRL+PLUS_MINUS",
+      "keyStep:LEFT_RIGHT"
+    ];
+
+    function fillSelect(id, options) {
+      const el = document.getElementById(id);
+      for (const opt of options) {
+        const o = document.createElement("option");
+        o.value = opt;
+        o.textContent = opt;
+        el.appendChild(o);
+      }
+    }
+
+    ["btn1", "btn2", "btn3"].forEach((id) => fillSelect(id, buttonActions));
+    ["pot1", "pot2", "pot3"].forEach((id) => fillSelect(id, potActions));
+
+    function buildConfig() {
+      const profileName = document.getElementById("profileName").value.trim() || "Default";
+      return {
+        version: 1,
+        profile: profileName,
+        buttons: [
+          { id: 1, action: document.getElementById("btn1").value },
+          { id: 2, action: document.getElementById("btn2").value },
+          { id: 3, action: document.getElementById("btn3").value }
+        ],
+        pots: [
+          { id: 1, action: document.getElementById("pot1").value },
+          { id: 2, action: document.getElementById("pot2").value },
+          { id: 3, action: document.getElementById("pot3").value }
+        ]
+      };
+    }
+
+    const out = document.getElementById("jsonOut");
+    const copyBtn = document.getElementById("copyJson");
+    const dlBtn = document.getElementById("downloadJson");
+
+    document.getElementById("buildJson").addEventListener("click", () => {
+      const cfg = buildConfig();
+      out.value = JSON.stringify(cfg, null, 2);
+      copyBtn.disabled = false;
+      dlBtn.disabled = false;
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      if (!out.value) return;
+      await navigator.clipboard.writeText(out.value);
+      const prev = copyBtn.textContent;
+      copyBtn.textContent = "Gekopieerd";
+      setTimeout(() => (copyBtn.textContent = prev), 900);
+    });
+
+    dlBtn.addEventListener("click", () => {
+      if (!out.value) return;
+      const blob = new Blob([out.value], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "streamdeck-profile.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>
